@@ -104,8 +104,8 @@ EMAIL_USE_SSL=False
 DEFAULT_FROM_EMAIL=Videoflix <your.address@gmail.com>
 ```
 
-The RQ worker reads the settings only when the container starts. After
-changing the `.env`, restart it:
+The RQ worker reads the settings and the code only when the container
+starts. After changing the `.env` or a background task, restart it:
 
 ```bash
 docker compose restart web
@@ -142,6 +142,8 @@ Every error answers with a JSON body `{"detail": "..."}`.
 | POST | `/api/login/` | anyone | 200, 400 |
 | POST | `/api/logout/` | refresh cookie | 200, 400 |
 | POST | `/api/token/refresh/` | refresh cookie | 200, 400, 401 |
+| POST | `/api/password_reset/` | anyone | 200, 400 |
+| POST | `/api/password_confirm/<uidb64>/<token>/` | anyone | 200, 400 |
 
 ## Design decisions
 
@@ -158,11 +160,17 @@ Every error answers with a JSON body `{"detail": "..."}`.
   build the activation link, so in production it should only travel by mail.
 - `EMAIL_HOST` is empty in `.env.template`, so a fresh setup prints the mails
   to the log instead of failing to send them.
-- Activation links are valid for 24 hours (`PASSWORD_RESET_TIMEOUT`).
-  Opening one twice answers 200 again, after the first login it stops
-  working.
-- Wrong input on register, activate and login always answers 400 with the
-  same message, `Please check your input and try again.`. A wrong password,
+- Activation and reset links are valid for 24 hours, as the reset mail
+  promises (`PASSWORD_RESET_TIMEOUT`). Opening an activation link twice
+  answers 200 again, after the first login it stops working. A reset link
+  works once, the new password makes it invalid. Accounts that are not
+  activated yet cannot reset their password.
+- `password_reset` answers 200 with the same text for every valid email
+  address, also for unknown and inactive accounts. Only active accounts get
+  a mail. A malformed address answers 400.
+- Wrong input on register, activate, login, password reset and password
+  confirm always answers 400 with the same message,
+  `Please check your input and try again.`. A wrong password,
   an unknown email and an inactive account get the same answer.
 - Logout only needs the refresh cookie, so an expired access cookie cannot
   stop a user from logging out. Without the refresh cookie it answers 400.
