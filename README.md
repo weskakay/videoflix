@@ -167,6 +167,16 @@ Every error answers with a JSON body `{"detail": "..."}`.
 | POST | `/api/password_reset/` | anyone | 200, 400 |
 | POST | `/api/password_confirm/<uidb64>/<token>/` | anyone | 200, 400 |
 
+### Videos
+
+| Method | Path | Who | Codes |
+|---|---|---|---|
+| GET | `/api/video/` | logged in | 200, 401 |
+| GET | `/api/video/<movie_id>/<resolution>/index.m3u8` | logged in | 200, 401, 404 |
+| GET | `/api/video/<movie_id>/<resolution>/<segment>/` | logged in | 200, 401, 404 |
+
+`resolution` is `480p`, `720p` or `1080p`, `segment` is a name like `000.ts`.
+
 ## Design decisions
 
 - `STATICFILES_STORAGE` was removed in Django 5.1. The same WhiteNoise
@@ -216,3 +226,14 @@ Every error answers with a JSON body `{"detail": "..."}`.
   the commit as well.
 - Only a new video is converted. To replace the file of a video, delete it
   and upload it again.
+- Segments are also served without the trailing slash of the API
+  documentation (`.../720p/000.ts`), because the HLS player loads them
+  relative to the playlist and never adds a slash.
+- Only known resolutions and segment names of three digits plus `.ts` are
+  accepted, so a request can never reach a file outside the video folder.
+- Thumbnails are the only public media files, the frontend loads them as
+  plain images. Videos and HLS files are only available through the API
+  with a login. Django serves the thumbnails while `DEBUG=True`, a
+  production setup would let the web server do that.
+- The video list is cached in Redis for 15 minutes. Saving or deleting a
+  video and a finished conversion clear the cache right away.
