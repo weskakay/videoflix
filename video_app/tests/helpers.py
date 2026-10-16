@@ -6,11 +6,18 @@ from django.test import override_settings
 
 from video_app.models import Video
 
+# Tests keep their own cache, the Redis of the dev setup stays untouched.
+TEST_CACHES = {
+    'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache'}
+}
+
 
 def use_temp_media(test_case):
-    """Points MEDIA_ROOT to a fresh folder that is removed afterwards."""
+    """Points MEDIA_ROOT to a fresh folder and uses a local cache."""
     media_root = tempfile.mkdtemp()
-    settings_override = override_settings(MEDIA_ROOT=media_root)
+    settings_override = override_settings(
+        MEDIA_ROOT=media_root, CACHES=TEST_CACHES
+    )
     settings_override.enable()
     test_case.addCleanup(settings_override.disable)
     test_case.addCleanup(shutil.rmtree, media_root, ignore_errors=True)

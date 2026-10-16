@@ -2,6 +2,7 @@ import subprocess
 from pathlib import Path
 from unittest.mock import call, patch
 
+from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 
@@ -63,6 +64,11 @@ class ConversionTaskTests(TestCase):
         self.assertEqual(
             self.video.thumbnail.name, f'thumbnails/{self.video.id}.jpg'
         )
+
+    def test_process_video_clears_the_cached_list(self, run):
+        cache.set('video_list', ['old'])
+        process_video(self.video.id)
+        self.assertIsNone(cache.get('video_list'))
 
     def test_uploaded_thumbnail_is_kept(self, run):
         image = SimpleUploadedFile('own.jpg', b'image', 'image/jpeg')
