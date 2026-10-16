@@ -70,6 +70,28 @@ http://0.0.0.0:8000`.
 [http://127.0.0.1:8000/admin/](http://127.0.0.1:8000/admin/), log in with
 `DJANGO_SUPERUSER_USERNAME` and `DJANGO_SUPERUSER_PASSWORD` from your `.env`.
 
+## Uploading videos
+
+1. Open [http://127.0.0.1:8000/admin/](http://127.0.0.1:8000/admin/) and log
+   in as superuser.
+2. Go to **Videos** and click **Add video**.
+3. Fill in title, description and category, choose a video file (`mp4`,
+   `mov`, `mkv`, `webm` or `avi`) and click **Save**.
+
+The RQ worker then converts the video in the background into HLS streams in
+480p, 720p and 1080p and picks a typical frame as thumbnail. A thumbnail
+uploaded in the admin is kept. As soon as the column **Is converted** shows a
+check mark, the video is ready for streaming. Deleting a video also deletes
+the upload, the thumbnail and all HLS files.
+
+The converted files are stored in the Docker volume `videoflix_media`:
+
+```
+media/videos/<file>               original upload
+media/thumbnails/<id>.jpg         thumbnail
+media/hls/<id>/<resolution>/      index.m3u8 and the segments 000.ts, 001.ts, ...
+```
+
 ## Configuration
 
 All settings come from the `.env` file. Variables added to the template:
@@ -182,3 +204,15 @@ Every error answers with a JSON body `{"detail": "..."}`.
 - There is no CSRF check on the API, the frontend does not send a CSRF
   token. The cookies use `SameSite=Lax`, so browsers do not send them with
   POST requests from other sites, and CORS only allows the frontend origins.
+- Categories are a fixed list (Action, Comedy, Documentary, Drama, Romance),
+  so the frontend never groups the same genre twice under different
+  spellings.
+- A video is only listed once all three resolutions and the thumbnail are
+  ready (`is_converted`). If FFmpeg fails, the video stays hidden, the
+  FFmpeg error is printed to the container log, and files of the finished
+  resolutions stay until the video is deleted.
+- The conversion job is queued after the database commit, so the worker
+  never looks for a video that is not saved yet. Files are deleted after
+  the commit as well.
+- Only a new video is converted. To replace the file of a video, delete it
+  and upload it again.
