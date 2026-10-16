@@ -1,8 +1,14 @@
+from unittest.mock import patch
+
 from django.contrib.auth.models import User
 from django.contrib.auth.tokens import default_token_generator
 from django.urls import reverse
+from redis.exceptions import ConnectionError
 from rest_framework import status
 from rest_framework.test import APITestCase
+
+from auth_app.tasks import send_activation_email
+from auth_app.utils import build_frontend_link
 
 STRONG_PASSWORD = 'VideoFlix#2026'
 GENERAL_ERROR = {'detail': 'Please check your input and try again.'}
@@ -12,6 +18,9 @@ class RegistrationTests(APITestCase):
     """Covers POST /api/register/."""
 
     def setUp(self):
+        patcher = patch('auth_app.services.django_rq.get_queue')
+        self.get_queue = patcher.start()
+        self.addCleanup(patcher.stop)
         self.url = reverse('register')
         self.payload = {
             'email': 'max@mail.de',
@@ -46,6 +55,22 @@ class RegistrationTests(APITestCase):
         self.assertTrue(
             default_token_generator.check_token(user, response.data['token'])
         )
+
+    def test_activation_mail_is_queued_with_link(self):
+        response = self.post()
+        user = User.objects.get(email='max@mail.de')
+        token = response.data['token']
+        link = build_frontend_link('activate.html', user, token)
+        self.get_queue.assert_called_once_with('default', autocommit=True)
+        self.get_queue.return_value.enqueue.assert_called_once_with(
+            send_activation_email, 'max@mail.de', link
+        )
+
+    def test_no_user_left_when_queue_is_down(self):
+        self.get_queue.return_value.enqueue.side_effect = ConnectionError
+        with self.assertRaises(ConnectionError):
+            self.post()
+        self.assertFalse(User.objects.filter(email='max@mail.de').exists())
 
     def test_email_is_lowercased(self):
         self.payload['email'] = 'Max@Mail.DE'
