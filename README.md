@@ -81,6 +81,36 @@ All settings come from the `.env` file. Variables added to the template:
 
 `CSRF_TRUSTED_ORIGINS` also allows port 5501.
 
+### Email
+
+Activation and password reset mails are sent by the RQ worker in the
+background. As long as `EMAIL_HOST` is empty, Django prints every mail to the
+container log instead of sending it, so you can copy the link from there:
+
+```bash
+docker compose logs web
+```
+
+To send real mails, fill in the SMTP values of your provider, for example
+Gmail with an [app password](https://myaccount.google.com/apppasswords):
+
+```
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_HOST_USER=your.address@gmail.com
+EMAIL_HOST_PASSWORD=your app password
+EMAIL_USE_TLS=True
+EMAIL_USE_SSL=False
+DEFAULT_FROM_EMAIL=Videoflix <your.address@gmail.com>
+```
+
+The RQ worker reads the settings only when the container starts. After
+changing the `.env`, restart it:
+
+```bash
+docker compose restart web
+```
+
 ## Design decisions
 
 - `STATICFILES_STORAGE` was removed in Django 5.1. The same WhiteNoise
@@ -91,3 +121,11 @@ All settings come from the `.env` file. Variables added to the template:
 - The access token lives 60 minutes. The frontend refreshes it every 20
   minutes on the video list only, so it has to outlast a whole video in the
   player.
+- The register response contains the activation token, as the API
+  documentation asks for it. With the token and the user id anyone could
+  build the activation link, so in production it should only travel by mail.
+- `EMAIL_HOST` is empty in `.env.template`, so a fresh setup prints the mails
+  to the log instead of failing to send them.
+- Activation links are valid for 24 hours (`PASSWORD_RESET_TIMEOUT`).
+  Opening one twice answers 200 again, after the first login it stops
+  working.
