@@ -1,6 +1,7 @@
 """Django settings for the Videoflix project."""
 
 import os
+from datetime import timedelta
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -36,6 +37,9 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'rest_framework',
+    'rest_framework_simplejwt.token_blacklist',
+    'corsheaders',
     'django_rq',
     'auth_app',
     'video_app',
@@ -44,6 +48,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -163,3 +168,57 @@ STORAGES = {
 }
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+# Django REST Framework
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'auth_app.api.authentication.CookieJWTAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+}
+
+
+# JWT in HttpOnly cookies
+
+# The frontend refreshes every 20 minutes on the video list only and never
+# in the player, so the access token has to outlive a whole video.
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+}
+
+# Secure cookies are only sent over HTTPS, so they stay off locally.
+JWT_COOKIE_SECURE = os.getenv('JWT_COOKIE_SECURE', default='False') == 'True'
+
+
+# CORS, so the frontend may call this API with its cookies
+
+CORS_ALLOWED_ORIGINS = os.environ.get(
+    'CORS_ALLOWED_ORIGINS', default='http://127.0.0.1:5500'
+).split(',')
+CORS_ALLOW_CREDENTIALS = True
+
+FRONTEND_URL = os.getenv('FRONTEND_URL', default='http://127.0.0.1:5500')
+
+
+# Email, printed to the console as long as no SMTP host is set
+
+EMAIL_HOST = os.getenv('EMAIL_HOST', default='')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', default='587'))
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', default='')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', default='')
+EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', default='True') == 'True'
+EMAIL_USE_SSL = os.getenv('EMAIL_USE_SSL', default='False') == 'True'
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', default=EMAIL_HOST_USER)
+
+if EMAIL_HOST:
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+else:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+# Activation and reset links, the reset mail promises 24 hours.
+PASSWORD_RESET_TIMEOUT = 60 * 60 * 24
