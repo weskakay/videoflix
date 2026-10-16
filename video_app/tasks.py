@@ -8,6 +8,7 @@ from video_app.utils import (
     RESOLUTIONS,
     build_hls_command,
     build_thumbnail_command,
+    clear_video_cache,
     get_hls_dir,
 )
 
@@ -47,3 +48,4 @@ def process_video(video_id):
     Video.objects.filter(pk=video_id).update(
         thumbnail=thumbnail, is_converted=True
     )
+    clear_video_cache()

@@ -2,6 +2,8 @@ import shutil
 from pathlib import Path
 
 from django.conf import settings
+from django.core.cache import cache
+from django.http import Http404
 
 # Name in the URL and the size FFmpeg scales the video to.
 RESOLUTIONS = {
@@ -9,6 +11,8 @@ RESOLUTIONS = {
     '720p': 'hd720',
     '1080p': 'hd1080',
 }
+VIDEO_LIST_CACHE_KEY = 'video_list'
+VIDEO_LIST_CACHE_SECONDS = 60 * 15
 
 
 def get_hls_dir(video_id):
@@ -55,3 +59,31 @@ def delete_video_files(video):
     delete_file(video.video_file)
     delete_file(video.thumbnail)
     shutil.rmtree(get_hls_dir(video.id), ignore_errors=True)
+
+
+def find_hls_file(video_id, resolution, file_name):
+    """Returns the path of a manifest or segment, or raises a 404.
+
+    Only known resolutions are accepted, the URL patterns already limit
+    the file name, so nothing outside the video folder can be reached.
+    """
+    if resolution not in RESOLUTIONS:
+        raise Http404
+    path = get_hls_dir(video_id) / resolution / file_name
+    if not path.is_file():
+        raise Http404
+    return path
+
+
+def get_cached_videos(queryset):
+    """Returns the video list from Redis, loads it on the first call."""
+    videos = cache.get(VIDEO_LIST_CACHE_KEY)
+    if videos is None:
+        videos = list(queryset)
+        cache.set(VIDEO_LIST_CACHE_KEY, videos, VIDEO_LIST_CACHE_SECONDS)
+    return videos
+
+
+def clear_video_cache():
+    """Drops the cached list, the next request loads it fresh."""
+    cache.delete(VIDEO_LIST_CACHE_KEY)
