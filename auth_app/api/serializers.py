@@ -2,6 +2,7 @@ from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.tokens import default_token_generator
 from rest_framework import serializers
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from auth_app.utils import find_user_by_uid
 
@@ -53,3 +54,26 @@ class ActivationSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('Invalid link.')
         data['user'] = user
         return data
+
+
+class EmailTokenObtainSerializer(TokenObtainPairSerializer):
+    """Logs in with email and password instead of the username."""
+
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True)
+
+    def __init__(self, *args, **kwargs):
+        """Drops the username field the parent class adds."""
+        super().__init__(*args, **kwargs)
+        self.fields.pop('username')
+
+    def validate(self, attrs):
+        """Refuses unknown emails, wrong passwords and inactive users."""
+        user = User.objects.filter(email__iexact=attrs['email']).first()
+        password = attrs['password']
+        if not user or not user.is_active:
+            raise serializers.ValidationError('Invalid credentials.')
+        if not user.check_password(password):
+            raise serializers.ValidationError('Invalid credentials.')
+        credentials = {'username': user.username, 'password': password}
+        return super().validate(credentials)

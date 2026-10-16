@@ -8,3 +8,11 @@ class InvalidInput(APIException):
     status_code = status.HTTP_400_BAD_REQUEST
     default_detail = 'Please check your input and try again.'
     default_code = 'invalid_input'
+
+
+class MissingRefreshToken(APIException):
+    """400 when the refresh cookie is not sent at all."""
+
+    status_code = status.HTTP_400_BAD_REQUEST
+    default_detail = 'Refresh token is missing.'
+    default_code = 'missing_refresh_token'

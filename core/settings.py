@@ -189,6 +189,8 @@ REST_FRAMEWORK = {
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    # A login sets last_login, which makes old activation links invalid.
+    'UPDATE_LAST_LOGIN': True,
 }
 
 # Secure cookies are only sent over HTTPS, so they stay off locally.
