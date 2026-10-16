@@ -1,6 +1,9 @@
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
+from django.contrib.auth.tokens import default_token_generator
 from rest_framework import serializers
+
+from auth_app.utils import find_user_by_uid
 
 
 class RegistrationSerializer(serializers.ModelSerializer):
@@ -29,4 +32,24 @@ class RegistrationSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('Passwords do not match.')
         user = User(username=data['email'], email=data['email'])
         validate_password(data['password'], user)
+        return data
+
+
+class ActivationSerializer(serializers.ModelSerializer):
+    """Turns the uid and token from a mail link into the matching user."""
+
+    uidb64 = serializers.CharField(write_only=True)
+    token = serializers.CharField(write_only=True)
+
+    class Meta:
+        model = User
+        fields = ['uidb64', 'token']
+
+    def validate(self, data):
+        """Rejects a link with an unknown user or a wrong or old token."""
+        user = find_user_by_uid(data['uidb64'])
+        token = data['token']
+        if not user or not default_token_generator.check_token(user, token):
+            raise serializers.ValidationError('Invalid link.')
+        data['user'] = user
         return data
