@@ -111,6 +111,38 @@ changing the `.env`, restart it:
 docker compose restart web
 ```
 
+## Authentication
+
+Users log in with email and password. The backend answers with two HttpOnly
+cookies, `access_token` (60 minutes) and `refresh_token` (1 day). Every
+protected request needs the access cookie, the frontend sends it with
+`credentials: 'include'`. Tokens never appear in a response body, except the
+new access token of the refresh endpoint, as the API documentation shows it.
+
+A new account stays inactive until the link from the activation mail is
+opened.
+
+Open the frontend on `127.0.0.1` as well, not on `localhost`. The API runs on
+`127.0.0.1:8000`, and browsers do not send `SameSite=Lax` cookies from
+`localhost` to `127.0.0.1`.
+
+Set `JWT_COOKIE_SECURE=True` in the `.env` as soon as the API runs on HTTPS,
+the cookies are then only sent over encrypted connections.
+
+## Endpoints
+
+Every error answers with a JSON body `{"detail": "..."}`.
+
+### Authentication
+
+| Method | Path | Who | Codes |
+|---|---|---|---|
+| POST | `/api/register/` | anyone | 201, 400 |
+| GET | `/api/activate/<uidb64>/<token>/` | anyone | 200, 400 |
+| POST | `/api/login/` | anyone | 200, 400 |
+| POST | `/api/logout/` | refresh cookie | 200, 400 |
+| POST | `/api/token/refresh/` | refresh cookie | 200, 400, 401 |
+
 ## Design decisions
 
 - `STATICFILES_STORAGE` was removed in Django 5.1. The same WhiteNoise
@@ -129,3 +161,16 @@ docker compose restart web
 - Activation links are valid for 24 hours (`PASSWORD_RESET_TIMEOUT`).
   Opening one twice answers 200 again, after the first login it stops
   working.
+- Wrong input on register, activate and login always answers 400 with the
+  same message, `Please check your input and try again.`. A wrong password,
+  an unknown email and an inactive account get the same answer.
+- Logout only needs the refresh cookie, so an expired access cookie cannot
+  stop a user from logging out. Without the refresh cookie it answers 400.
+  The refresh token goes on the blacklist and both cookies are deleted. An
+  access token copied before stays valid until it expires, JWTs cannot be
+  revoked one by one.
+- The refresh endpoint answers 400 when the cookie is missing and 401 when
+  the token is broken, expired or blacklisted.
+- There is no CSRF check on the API, the frontend does not send a CSRF
+  token. The cookies use `SameSite=Lax`, so browsers do not send them with
+  POST requests from other sites, and CORS only allows the frontend origins.
