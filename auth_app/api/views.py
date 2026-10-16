@@ -14,9 +14,16 @@ from auth_app.api.exceptions import InvalidInput, MissingRefreshToken
 from auth_app.api.serializers import (
     ActivationSerializer,
     EmailTokenObtainSerializer,
+    PasswordConfirmSerializer,
+    PasswordResetSerializer,
     RegistrationSerializer,
 )
-from auth_app.services import activate_user, register_user
+from auth_app.services import (
+    activate_user,
+    register_user,
+    request_password_reset,
+    reset_password,
+)
 from auth_app.utils import (
     blacklist_refresh_token,
     delete_token_cookies,
@@ -142,3 +149,50 @@ class LogoutView(APIView):
         })
         delete_token_cookies(response)
         return response
+
+
+class PasswordResetView(generics.GenericAPIView):
+    """POST /api/password_reset/ sends a reset link by mail.
+
+    The answer is the same whether an account exists or not.
+    """
+
+    authentication_classes = []
+    permission_classes = [AllowAny]
+    queryset = User.objects.all()
+    serializer_class = PasswordResetSerializer
+
+    def post(self, request):
+        """Queues the reset mail and answers with a fixed text."""
+        serializer = self.get_serializer(data=request.data)
+        if not serializer.is_valid():
+            raise InvalidInput()
+        request_password_reset(serializer.validated_data['email'])
+        return Response({
+            'detail': 'An email has been sent to reset your password.'
+        })
+
+
+class PasswordConfirmView(generics.GenericAPIView):
+    """POST /api/password_confirm/<uidb64>/<token>/ sets a new password."""
+
+    authentication_classes = []
+    permission_classes = [AllowAny]
+    queryset = User.objects.all()
+    serializer_class = PasswordConfirmSerializer
+
+    def post(self, request, uidb64, token):
+        """Stores the new password for the user behind a valid link."""
+        if not isinstance(request.data, dict):
+            raise InvalidInput()
+        data = {**request.data, 'uidb64': uidb64, 'token': token}
+        serializer = self.get_serializer(data=data)
+        if not serializer.is_valid():
+            raise InvalidInput()
+        reset_password(
+            serializer.validated_data['user'],
+            serializer.validated_data['new_password'],
+        )
+        return Response(
+            {'detail': 'Your Password has been successfully reset.'}
+        )

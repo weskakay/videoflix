@@ -77,3 +77,33 @@ class EmailTokenObtainSerializer(TokenObtainPairSerializer):
             raise serializers.ValidationError('Invalid credentials.')
         credentials = {'username': user.username, 'password': password}
         return super().validate(credentials)
+
+
+class PasswordResetSerializer(serializers.ModelSerializer):
+    """Checks the email for a reset request, existing or not."""
+
+    email = serializers.EmailField()
+
+    class Meta:
+        model = User
+        fields = ['email']
+
+
+class PasswordConfirmSerializer(ActivationSerializer):
+    """Checks the reset link like the activation link, plus the passwords."""
+
+    new_password = serializers.CharField(write_only=True)
+    confirm_password = serializers.CharField(write_only=True)
+
+    class Meta(ActivationSerializer.Meta):
+        fields = ['uidb64', 'token', 'new_password', 'confirm_password']
+
+    def validate(self, data):
+        """Rejects a bad link, different passwords or a weak password."""
+        data = super().validate(data)
+        if not data['user'].is_active:
+            raise serializers.ValidationError('Account is not active.')
+        if data['new_password'] != data['confirm_password']:
+            raise serializers.ValidationError('Passwords do not match.')
+        validate_password(data['new_password'], data['user'])
+        return data
