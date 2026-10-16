@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Virtual env, all the usual folder names
+.venv/
+venv/
+env/
+ENV/
+.env/
+env.bak/
+venv.bak/
+
+# Django
+db.sqlite3
+db.sqlite3-journal
+/media/
+/static/
+
+# Env
+.env
+*.log
+
+# Coverage
+.coverage
+htmlcov/
+
+# OS / editor
+.DS_Store
+.vscode/
