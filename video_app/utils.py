@@ -36,11 +36,7 @@ def build_hls_command(source, target_dir, size):
 
 
 def build_thumbnail_command(source, target):
-    """Returns the FFmpeg arguments for a typical frame of the video.
-
-    The thumbnail filter picks it from the first frames, so it also works
-    for very short clips and rarely shows a black start frame.
-    """
+    """Returns the FFmpeg arguments for one typical frame as thumbnail."""
     return [
         'ffmpeg', '-y', '-loglevel', 'error', '-i', str(source),
         '-vf', 'thumbnail,scale=640:-2', '-frames:v', '1',
@@ -62,11 +58,7 @@ def delete_video_files(video):
 
 
 def find_hls_file(video_id, resolution, file_name):
-    """Returns the path of a manifest or segment, or raises a 404.
-
-    Only known resolutions are accepted, the URL patterns already limit
-    the file name, so nothing outside the video folder can be reached.
-    """
+    """Returns the path of a manifest or segment, or raises a 404."""
     if resolution not in RESOLUTIONS:
         raise Http404
     path = get_hls_dir(video_id) / resolution / file_name

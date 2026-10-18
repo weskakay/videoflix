@@ -1,7 +1,7 @@
 import django_rq
 from django.contrib.auth.models import User
-from django.db import transaction
 from django.contrib.auth.tokens import default_token_generator
+from django.db import transaction
 
 from auth_app.tasks import send_activation_email, send_password_reset_email
 from auth_app.utils import build_frontend_link
@@ -11,9 +11,7 @@ from auth_app.utils import build_frontend_link
 def register_user(email, password):
     """Creates an inactive user and queues the activation mail.
 
-    The email doubles as username, the account stays locked until the
-    link from the mail is opened. If the mail cannot be queued, the user
-    is rolled back, so the address stays free. Returns user and token.
+    Atomic, so a failing queue does not leave a half registered user.
     """
     user = User.objects.create_user(
         username=email, email=email, password=password, is_active=False
@@ -32,11 +30,7 @@ def activate_user(user):
 
 
 def request_password_reset(email):
-    """Queues a reset mail if an active account uses this email.
-
-    Unknown or inactive addresses are skipped without a hint, the caller
-    always gets the same answer.
-    """
+    """Queues a reset mail, but only for an active account."""
     user = User.objects.filter(email__iexact=email, is_active=True).first()
     if user is None:
         return

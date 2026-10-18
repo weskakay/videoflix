@@ -4,6 +4,7 @@ from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
+from rest_framework import status
 
 from video_app.models import Video
 from video_app.tests.helpers import create_video, use_temp_media
@@ -45,4 +46,4 @@ class VideoModelTests(TestCase):
         for name in ('admin:video_app_video_changelist',
                      'admin:video_app_video_add'):
             response = self.client.get(reverse(name))
-            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.status_code, status.HTTP_200_OK)

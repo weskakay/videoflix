@@ -11,8 +11,7 @@ urlpatterns = [
     path('api/', include('video_app.api.urls')),
 ]
 
-# Only thumbnails are public, videos and HLS files need a login and go
-# through the API. Django serves them while DEBUG is on.
+# Only thumbnails are public, videos go through the API (DEBUG only).
 urlpatterns += static(
     f'{settings.MEDIA_URL}thumbnails/',
     document_root=settings.MEDIA_ROOT / 'thumbnails',

@@ -9,17 +9,14 @@ from video_app.utils import find_hls_file, get_cached_videos
 
 
 class VideoListView(generics.ListAPIView):
-    """GET /api/video/ lists all converted videos, newest first.
-
-    The list is cached in Redis, saving or deleting a video clears it.
-    """
+    """GET /api/video/ lists all converted videos, newest first."""
 
     permission_classes = [IsAuthenticated]
     queryset = Video.objects.filter(is_converted=True)
     serializer_class = VideoSerializer
 
     def list(self, request, *args, **kwargs):
-        """Answers from the cache when possible."""
+        """Answers from the Redis cache when possible."""
         videos = get_cached_videos(self.get_queryset())
         serializer = self.get_serializer(videos, many=True)
         return Response(serializer.data)

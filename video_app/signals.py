@@ -16,11 +16,9 @@ def queue_conversion(video_id):
 
 @receiver(post_save, sender=Video)
 def convert_new_video(sender, instance, created, **kwargs):
-    """Starts the conversion once a new video is saved.
+    """Clears the cached list and converts new videos after the commit.
 
-    The job is queued after the commit, otherwise the worker could look
-    for a video that is not in the database yet. Every save drops the
-    cached list after the commit, so changes in the admin show up at once.
+    Without on_commit the worker could look for a row that is not saved yet.
     """
     transaction.on_commit(clear_video_cache)
     if created:

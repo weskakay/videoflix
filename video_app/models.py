@@ -5,13 +5,11 @@ VIDEO_EXTENSIONS = ['mp4', 'mov', 'mkv', 'webm', 'avi']
 
 
 class Video(models.Model):
-    """A video uploaded in the admin and streamed as HLS.
-
-    After the upload a background job converts it, until then
-    is_converted stays False and the video is not listed.
-    """
+    """A video uploaded in the admin and streamed as HLS."""
 
     class Category(models.TextChoices):
+        """Fixed genres, the frontend groups the videos by them."""
+
         ACTION = 'Action'
         COMEDY = 'Comedy'
         DOCUMENTARY = 'Documentary'

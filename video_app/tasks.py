@@ -32,12 +32,7 @@ def create_thumbnail(source, video_id):
 
 
 def process_video(video_id):
-    """Background job: converts all resolutions, then marks the video.
-
-    An uploaded thumbnail is kept, otherwise one is taken from the video.
-    The update() call skips the post_save signal on purpose. A video
-    deleted before the job starts has nothing left to convert.
-    """
+    """Background job: converts all resolutions, then marks the video."""
     video = Video.objects.filter(pk=video_id).first()
     if video is None:
         return
@@ -45,7 +40,7 @@ def process_video(video_id):
     for resolution in RESOLUTIONS:
         convert_to_hls(source, video_id, resolution)
     thumbnail = video.thumbnail.name or create_thumbnail(source, video_id)
-    Video.objects.filter(pk=video_id).update(
-        thumbnail=thumbnail, is_converted=True
-    )
+    # update() skips post_save
+    videos = Video.objects.filter(pk=video_id)
+    videos.update(thumbnail=thumbnail, is_converted=True)
     clear_video_cache()

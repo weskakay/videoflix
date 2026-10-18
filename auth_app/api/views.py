@@ -189,10 +189,8 @@ class PasswordConfirmView(generics.GenericAPIView):
         serializer = self.get_serializer(data=data)
         if not serializer.is_valid():
             raise InvalidInput()
-        reset_password(
-            serializer.validated_data['user'],
-            serializer.validated_data['new_password'],
-        )
-        return Response(
-            {'detail': 'Your Password has been successfully reset.'}
-        )
+        validated = serializer.validated_data
+        reset_password(validated['user'], validated['new_password'])
+        return Response({
+            'detail': 'Your Password has been successfully reset.'
+        })

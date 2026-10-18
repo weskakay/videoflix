@@ -184,20 +184,19 @@ REST_FRAMEWORK = {
 
 # JWT in HttpOnly cookies
 
-# The frontend refreshes every 20 minutes on the video list only and never
-# in the player, so the access token has to outlive a whole video.
+# 60 minutes: the frontend never refreshes while a video is playing.
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
-    # A login sets last_login, which makes old activation links invalid.
+    # last_login invalidates old activation links
     'UPDATE_LAST_LOGIN': True,
 }
 
-# Secure cookies are only sent over HTTPS, so they stay off locally.
+# Only works over HTTPS, so it stays off locally.
 JWT_COOKIE_SECURE = os.getenv('JWT_COOKIE_SECURE', default='False') == 'True'
 
 
-# CORS, so the frontend may call this API with its cookies
+# CORS
 
 CORS_ALLOWED_ORIGINS = os.environ.get(
     'CORS_ALLOWED_ORIGINS', default='http://127.0.0.1:5500'
@@ -207,7 +206,7 @@ CORS_ALLOW_CREDENTIALS = True
 FRONTEND_URL = os.getenv('FRONTEND_URL', default='http://127.0.0.1:5500')
 
 
-# Email, printed to the console as long as no SMTP host is set
+# Email, console backend until an SMTP host is set
 
 EMAIL_HOST = os.getenv('EMAIL_HOST', default='')
 EMAIL_PORT = int(os.getenv('EMAIL_PORT', default='587'))
@@ -222,5 +221,5 @@ if EMAIL_HOST:
 else:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
-# Activation and reset links, the reset mail promises 24 hours.
+# Activation and reset links, 24 hours as the reset mail says
 PASSWORD_RESET_TIMEOUT = 60 * 60 * 24
