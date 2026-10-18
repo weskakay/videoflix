@@ -261,6 +261,8 @@ Every error answers with a JSON body `{"detail": "..."}`.
   relative to the playlist and never adds a slash.
 - Only known resolutions and segment names of three digits plus `.ts` are
   accepted, so a request can never reach a file outside the video folder.
+- The manifest and segment views send files, not JSON, so they have a
+  `queryset` for the video lookup but no `serializer_class`.
 - Thumbnails are the only public media files, the frontend loads them as
   plain images. Videos and HLS files are only available through the API
   with a login. Django serves the thumbnails while `DEBUG=True`, a
