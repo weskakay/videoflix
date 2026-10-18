@@ -70,6 +70,33 @@ http://0.0.0.0:8000`.
 [http://127.0.0.1:8000/admin/](http://127.0.0.1:8000/admin/), log in with
 `DJANGO_SUPERUSER_USERNAME` and `DJANGO_SUPERUSER_PASSWORD` from your `.env`.
 
+## Frontend
+
+Tested with the frontend as of commit `eec23e0` (June 2026). Its `config.js`
+needs no change, the default `API_BASE_URL` already points to
+`http://127.0.0.1:8000/api/`.
+
+The frontend uses absolute paths, so serve its root folder on port 5500, for
+example with the Live Server extension of VS Code or from inside the frontend
+folder:
+
+macOS and Linux:
+
+```bash
+python3 -m http.server 5500
+```
+
+Windows:
+
+```bash
+python -m http.server 5500
+```
+
+Open `http://127.0.0.1:5500`, not `localhost`, otherwise the browser does not
+send the login cookies to the API. There are no guest accounts. Register a
+user with a strong password such as `VideoFlix#2026`, copy the activation
+link from the log (see [Email](#email)) and log in.
+
 ## Uploading videos
 
 1. Open [http://127.0.0.1:8000/admin/](http://127.0.0.1:8000/admin/) and log
@@ -181,6 +208,9 @@ Every error answers with a JSON body `{"detail": "..."}`.
 
 - `STATICFILES_STORAGE` was removed in Django 5.1. The same WhiteNoise
   storage is set through `STORAGES`.
+- The Docker files and `.env.template` are the provided template. The
+  Docker files are unchanged, `.env.template` only got new values and
+  variables.
 - `backend.entrypoint.sh` is committed as executable. The project folder is
   mounted into the container, so on macOS and Linux the file mode from the
   host counts. The content is unchanged.
@@ -237,3 +267,51 @@ Every error answers with a JSON body `{"detail": "..."}`.
   production setup would let the web server do that.
 - The video list is cached in Redis for 15 minutes. Saving or deleting a
   video and a finished conversion clear the cache right away.
+
+## Project layout
+
+```
+core/        project settings and root urls
+auth_app/    registration, activation, login, logout, token refresh,
+             password reset, cookie authentication and the HTML mails
+video_app/   video model and admin, FFmpeg jobs in tasks.py, signals.py
+             starts and cleans up the conversion, the video API
+```
+
+Each app keeps its API code in an `api/` folder and its tests in a `tests/`
+folder. `services.py` and `tasks.py` hold the work the views hand off, small
+helpers live in `utils.py`. The tests never call FFmpeg, Redis or a mail
+server, those calls are faked.
+
+## Development
+
+The tests run inside the container against PostgreSQL. Install the
+development tools there first, they are gone again after a rebuild:
+
+```bash
+docker compose exec web pip install -r requirements-dev.txt
+```
+
+Run the linter:
+
+```bash
+docker compose exec web flake8
+```
+
+Run the tests:
+
+```bash
+docker compose exec web coverage run manage.py test
+```
+
+Show the coverage report:
+
+```bash
+docker compose exec web coverage report
+```
+
+Create new migrations after a model change:
+
+```bash
+docker compose exec web python manage.py makemigrations
+```
